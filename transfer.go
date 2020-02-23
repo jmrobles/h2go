@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/pkg/errors"
+	"golang.org/x/text/encoding/unicode"
 )
 
 type transfer struct {
@@ -71,6 +72,12 @@ func (t *transfer) writeString(s string) error {
 	if n == -1 {
 		return nil
 	}
+	enc := unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewEncoder()
+	data, err = enc.Bytes(data)
+	if err != nil {
+		return errors.Wrapf(err, "can't convert to UTF-16")
+	}
+	n = int32(len(data))
 	for {
 		n2, err := t.conn.Write(data[pos:n])
 		if err != nil {

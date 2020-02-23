@@ -8,9 +8,8 @@ import (
 
 func (c *h2client) doHandshake(ci h2connInfo) error {
 	var err error
-	log.Printf("Start handshake")
 	// 1. send min client version
-	err = c.trans.writeInt32(19)
+	err = c.trans.writeInt32(9)
 	if err != nil {
 		return errors.Wrapf(err, "H2 handshake: can't send min client version")
 	}
@@ -50,13 +49,11 @@ func (c *h2client) doHandshake(ci h2connInfo) error {
 	if err != nil {
 		return errors.Wrapf(err, "H2 handshake: can't send properties")
 	}
-	log.Printf("Waiting server answer")
 	// 9. Wait for Status OK ack
 	code, err := c.trans.readInt32()
 	if err != nil {
 		return errors.Wrapf(err, "H2 handshake: can't get H2 Server status code")
 	}
-	log.Printf("Waiting server answer 2")
 	// 10. Read client version
 	clientVer, err := c.trans.readInt32()
 	if err != nil {
