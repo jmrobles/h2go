@@ -40,7 +40,7 @@ func (t *transfer) readString() (string, error) {
 	if n == -1 || n == 0 {
 		return "", nil
 	}
-	buf := make([]byte, n)
+	buf := make([]byte, n*2)
 	var cur int32
 	for {
 		n2, err := t.conn.Read(buf[cur:n])
@@ -51,6 +51,11 @@ func (t *transfer) readString() (string, error) {
 		if cur == n {
 			break
 		}
+	}
+	dec := unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewDecoder()
+	buf, err = dec.Bytes(buf)
+	if err != nil {
+		return "", errors.Wrapf(err, "can't convert from UTF-16 a UTF-8 string")
 	}
 	return string(buf), nil
 
