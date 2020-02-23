@@ -10,7 +10,7 @@ import (
 func main() {
 	log.Printf("H2GO Example")
 
-	conn, err := sql.Open("h2", "jander")
+	conn, err := sql.Open("h2", "h2://sa@localhost/jander?mem=true")
 	if err != nil {
 		log.Fatalf("ERROR: %s", err)
 	}
