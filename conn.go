@@ -5,10 +5,14 @@ import (
 	"log"
 )
 
-type h2Conn struct{}
+type h2Conn struct {
+	driver.Conn
+}
 type h2Result struct {
 	query string
 }
+
+type h2connInfo struct{}
 
 // Conn interface
 func (h2c *h2Conn) Begin() (driver.Tx, error) {
@@ -40,4 +44,11 @@ func (h2r *h2Result) Columns() []string {
 
 func (h2r *h2Result) Next(dest []driver.Value) error {
 	return nil
+}
+
+// Specific code
+
+func connect(ci h2connInfo) (driver.Conn, error) {
+
+	return &h2Conn{}, nil
 }
