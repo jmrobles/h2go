@@ -49,6 +49,10 @@ func (c *h2client) doHandshake(ci h2connInfo) error {
 	if err != nil {
 		return errors.Wrapf(err, "H2 handshake: can't send properties")
 	}
+	err = c.trans.flush()
+	if err != nil {
+		return errors.Wrapf(err, "H2 handshake: can't flush data to socket")
+	}
 	// 9. Wait for Status OK ack
 	code, err := c.trans.readInt32()
 	if err != nil {

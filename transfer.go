@@ -1,8 +1,8 @@
 package h2go
 
 import (
+	"bufio"
 	"encoding/binary"
-	"log"
 	"net"
 
 	"github.com/pkg/errors"
@@ -11,15 +11,20 @@ import (
 
 type transfer struct {
 	conn net.Conn
+	buff *bufio.ReadWriter
 }
 
 func newTransfer(conn net.Conn) transfer {
-	return transfer{conn: conn}
+
+	buffReader := bufio.NewReader(conn)
+	buffWriter := bufio.NewWriter(conn)
+	buff := bufio.NewReadWriter(buffReader, buffWriter)
+	return transfer{conn: conn, buff: buff}
 }
 
 func (t *transfer) readInt32() (int32, error) {
 	var ret int32
-	err := binary.Read(t.conn, binary.BigEndian, &ret)
+	err := binary.Read(t.buff, binary.BigEndian, &ret)
 	if err != nil {
 		return -1, errors.Wrapf(err, "can't read int value from socket")
 	}
@@ -28,7 +33,7 @@ func (t *transfer) readInt32() (int32, error) {
 }
 
 func (t *transfer) writeInt32(v int32) error {
-	return binary.Write(t.conn, binary.BigEndian, v)
+	return binary.Write(t.buff, binary.BigEndian, v)
 }
 
 func (t *transfer) readString() (string, error) {
@@ -43,7 +48,7 @@ func (t *transfer) readString() (string, error) {
 	buf := make([]byte, n*2)
 	var cur int32
 	for {
-		n2, err := t.conn.Read(buf[cur:n])
+		n2, err := t.buff.Read(buf[cur:n])
 		if err != nil {
 			return "", err
 		}
@@ -62,7 +67,7 @@ func (t *transfer) readString() (string, error) {
 }
 
 func (t *transfer) writeString(s string) error {
-	log.Printf("write: %s", s)
+	// log.Printf("write: %s", s)
 	var err error
 	data := []byte(s)
 	var pos int32
@@ -84,7 +89,7 @@ func (t *transfer) writeString(s string) error {
 	}
 	n = int32(len(data))
 	for {
-		n2, err := t.conn.Write(data[pos:n])
+		n2, err := t.buff.Write(data[pos:n])
 		if err != nil {
 			return errors.Wrapf(err, "can't write string to socket")
 		}
@@ -105,7 +110,7 @@ func (t *transfer) readBytes() ([]byte, error) {
 		return nil, nil
 	}
 	buf := make([]byte, n)
-	n2, err := t.conn.Read(buf)
+	n2, err := t.buff.Read(buf)
 	if n != int32(n2) {
 		return nil, errors.Errorf("Read byte size differs: %d != %d", n, n2)
 	}
@@ -126,7 +131,7 @@ func (t *transfer) writeBytes(data []byte) error {
 	if s == -1 {
 		return nil
 	}
-	n, err := t.conn.Write(data)
+	n, err := t.buff.Write(data)
 	if err != nil {
 		return errors.Wrapf(err, "can't write bytes to socket")
 	}
@@ -134,4 +139,8 @@ func (t *transfer) writeBytes(data []byte) error {
 		return errors.Wrapf(err, "can't write all bytes to socket => %d != %d", n, s)
 	}
 	return nil
+}
+
+func (t *transfer) flush() error {
+	return t.buff.Flush()
 }
