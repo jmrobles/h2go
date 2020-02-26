@@ -46,16 +46,25 @@ func (t *transfer) readString() (string, error) {
 		return "", nil
 	}
 	buf := make([]byte, n*2)
-	var cur int32
-	for {
-		n2, err := t.buff.Read(buf[cur:n])
-		if err != nil {
-			return "", err
+	/*
+		var cur int32
+		for {
+			n2, err := t.buff.Read(buf[cur:n])
+			if err != nil {
+				return "", err
+			}
+			cur += int32(n2)
+			if cur == n {
+				break
+			}
 		}
-		cur += int32(n2)
-		if cur == n {
-			break
-		}
+	*/
+	n2, err := t.buff.Read(buf)
+	if err != nil {
+		return "", err
+	}
+	if n2 != len(buf) {
+		return "", errors.Errorf("Can't read all data needed")
 	}
 	dec := unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewDecoder()
 	buf, err = dec.Bytes(buf)
@@ -70,7 +79,7 @@ func (t *transfer) writeString(s string) error {
 	// log.Printf("write: %s", s)
 	var err error
 	data := []byte(s)
-	var pos int32
+	// var pos int32
 	n := int32(len(data))
 	if n == 0 {
 		n = -1
@@ -87,16 +96,25 @@ func (t *transfer) writeString(s string) error {
 	if err != nil {
 		return errors.Wrapf(err, "can't convert to UTF-16")
 	}
-	n = int32(len(data))
-	for {
-		n2, err := t.buff.Write(data[pos:n])
-		if err != nil {
-			return errors.Wrapf(err, "can't write string to socket")
+	/*
+		n = int32(len(data))
+		for {
+			n2, err := t.buff.Write(data[pos:n])
+			if err != nil {
+				return errors.Wrapf(err, "can't write string to socket")
+			}
+			pos += int32(n2)
+			if pos == n {
+				break
+			}
 		}
-		pos += int32(n2)
-		if pos == n {
-			break
-		}
+	*/
+	n2, err := t.buff.Write(data)
+	if err != nil {
+		return errors.Wrapf(err, "can't write string to socket")
+	}
+	if n2 != len(data) {
+		return errors.Errorf("Data send not equal to wished")
 	}
 	return nil
 }
