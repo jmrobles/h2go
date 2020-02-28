@@ -159,6 +159,19 @@ func (t *transfer) writeBytes(data []byte) error {
 	return nil
 }
 
+func (t *transfer) readBool() (bool, error) {
+	v, err := t.readByte()
+	if err != nil {
+		return false, err
+	}
+	return v == 1, nil
+}
+
+func (t *transfer) readByte() (byte, error) {
+	v, err := t.buff.ReadByte()
+	return v, err
+}
+
 func (t *transfer) flush() error {
 	return t.buff.Flush()
 }

@@ -14,7 +14,9 @@ const defaultH2port = 9092
 type h2Conn struct {
 	connInfo h2connInfo
 	client   h2client
+	// Interfaces
 	driver.Conn
+	driver.Queryer
 }
 type h2Result struct {
 	query string
@@ -35,6 +37,7 @@ type h2connInfo struct {
 type h2client struct {
 	conn  net.Conn
 	trans transfer
+	sess  session
 }
 
 // Conn interface
@@ -52,6 +55,7 @@ func (h2c *h2Conn) Prepare(query string) (driver.Stmt, error) {
 // Querier interface
 func (h2c *h2Conn) Query(query string, args []driver.Value) (driver.Rows, error) {
 	log.Printf("Query: %s", query)
+	err = h2c.client.sess.prepare(h2c.client.trans, args)
 	return &h2Result{query}, nil
 }
 
@@ -80,7 +84,7 @@ func connect(ci h2connInfo) (driver.Conn, error) {
 		return nil, errors.Wrapf(err, "failed to open H2 connection")
 	}
 	t := newTransfer(conn)
-	c := h2client{conn: conn, trans: t}
+	c := h2client{conn: conn, trans: t, sess: newSession()}
 	err = c.doHandshake(ci)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error doing H2 server handshake")
