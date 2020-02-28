@@ -55,7 +55,11 @@ func (h2c *h2Conn) Prepare(query string) (driver.Stmt, error) {
 // Querier interface
 func (h2c *h2Conn) Query(query string, args []driver.Value) (driver.Rows, error) {
 	log.Printf("Query: %s", query)
-	err = h2c.client.sess.prepare(h2c.client.trans, args)
+	var err error
+	_, err = h2c.client.sess.prepare(&h2c.client.trans, query, args)
+	if err != nil {
+		return nil, err
+	}
 	return &h2Result{query}, nil
 }
 

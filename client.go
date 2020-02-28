@@ -34,14 +34,18 @@ func (c *h2client) doHandshake(ci h2connInfo) error {
 		return errors.Wrapf(err, "H2 handshake: can't send username")
 	}
 	// 6. Send password
-	err = c.trans.writeBytes(nil)
+	hashedPassword, err := getHashedPassword(ci.username, ci.password)
+	if err != nil {
+		return errors.Wrapf(err, "H2 handshake: can't hash password")
+	}
+	err = c.trans.writeBytes(hashedPassword[:])
 	if err != nil {
 		return errors.Wrapf(err, "H2 handshake: can't hashed password")
 	}
 	// 7. Send file password hash
 	err = c.trans.writeBytes(nil)
 	if err != nil {
-		return errors.Wrapf(err, "H2 handshake: can't hashed file password")
+		return errors.Wrapf(err, "H2 handshake: can't send hashed file password")
 	}
 	// 8. Send aditional properties
 	// TODO: bynow, 0 properties tos send

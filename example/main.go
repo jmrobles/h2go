@@ -14,7 +14,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("ERROR: %s", err)
 	}
-	rows, err := conn.Query("SELECT 1+1")
+	rows, err := conn.Query("SELECT 1")
 	if err != nil {
 		log.Fatalf("ERROR: %s", err)
 	}
