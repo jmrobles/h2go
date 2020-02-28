@@ -9,6 +9,39 @@ import (
 	"golang.org/x/text/encoding/unicode"
 )
 
+// Value types
+const (
+	Null             int32 = 0
+	Boolean          int32 = 1
+	Byte             int32 = 2
+	Short            int32 = 3
+	Int              int32 = 4
+	Long             int32 = 5
+	Decimal          int32 = 6
+	Double           int32 = 7
+	Float            int32 = 8
+	Time             int32 = 9
+	Date             int32 = 10
+	Timestamp        int32 = 11
+	Bytes            int32 = 12
+	String           int32 = 13
+	StringIgnoreCase int32 = 14
+	Blob             int32 = 15
+	Clob             int32 = 16
+	Array            int32 = 17
+	ResultSet        int32 = 18
+	JavaObject       int32 = 19
+	UUID             int32 = 20
+	StringFixed      int32 = 21
+	Geometry         int32 = 22
+	TimestampTZ      int32 = 24
+	Enum             int32 = 25
+	Interval         int32 = 26
+	Row              int32 = 27
+	JSON             int32 = 28
+	TimeTZ           int32 = 29
+)
+
 type transfer struct {
 	conn net.Conn
 	buff *bufio.ReadWriter
@@ -172,6 +205,85 @@ func (t *transfer) readByte() (byte, error) {
 	return v, err
 }
 
+func (t *transfer) readLong() (int64, error) {
+	var ret int64
+	err := binary.Read(t.buff, binary.BigEndian, &ret)
+	if err != nil {
+		return -1, errors.Wrapf(err, "can't read long value from socket")
+	}
+	return ret, nil
+}
+
 func (t *transfer) flush() error {
 	return t.buff.Flush()
+}
+
+func (t *transfer) readValue() (interface{}, error) {
+	var err error
+	kind, err := t.readInt32()
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't read type of value")
+	}
+	switch kind {
+	case Null:
+		// TODO: review
+		return nil, nil
+	case Bytes:
+		return t.readBytes()
+	case UUID:
+		return nil, errors.Errorf("UUID not implemented")
+	case JavaObject:
+		return nil, errors.Errorf("Java Object not implemented")
+	case Boolean:
+		return t.readBool()
+	case Byte:
+		return t.readByte()
+	case Date:
+		return nil, errors.Errorf("Date not implemented")
+	case Time:
+		return nil, errors.Errorf("Time not implemented")
+	case TimeTZ:
+		return nil, errors.Errorf("Time TZ not implemented")
+	case Timestamp:
+		return nil, errors.Errorf("Timestamp not implemented")
+	case TimestampTZ:
+		return nil, errors.Errorf("Timestamp TZ not implemented")
+	case Decimal:
+		return nil, errors.Errorf("Decimal not implemented")
+	case Double:
+		return nil, errors.Errorf("Double not implemented")
+	case Float:
+		return nil, errors.Errorf("Float not implemented")
+	case Enum:
+		return nil, errors.Errorf("Enum not implemented")
+	case Int:
+		return t.readInt32()
+	case Long:
+		return t.readLong()
+	case Short:
+		return nil, errors.Errorf("Short not implemented")
+	case String:
+		return t.readString()
+	case StringIgnoreCase:
+		return t.readString()
+	case StringFixed:
+		return t.readString()
+	case Blob:
+		return nil, errors.Errorf("Blob not implemented")
+	case Clob:
+		return nil, errors.Errorf("Clob not implemented")
+	case Array:
+		return nil, errors.Errorf("Array not implemented")
+	case Row:
+		return nil, errors.Errorf("Row not implemented")
+	case ResultSet:
+		return nil, errors.Errorf("Result Set not implemented")
+	case Geometry:
+		return nil, errors.Errorf("Geometry not implemented")
+	case JSON:
+		return nil, errors.Errorf("JSON not implemented")
+	default:
+		return nil, errors.Errorf("Unknown type: %d", kind)
+	}
+
 }

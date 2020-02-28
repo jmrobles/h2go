@@ -14,7 +14,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("ERROR: %s", err)
 	}
-	rows, err := conn.Query("SELECT 1")
+	rows, err := conn.Query("SELECT 1+2 AS ping, 'paco'")
 	if err != nil {
 		log.Fatalf("ERROR: %s", err)
 	}
@@ -23,8 +23,15 @@ func main() {
 		log.Printf("Can't get columns: %s", err)
 	}
 	log.Printf("Columns: %v", cols)
+	var value int
+	var name string
 	for rows.Next() {
-		// log.Printf("*")
+		err := rows.Scan(&value, &name)
+		if err != nil {
+			log.Printf("Can't get value: %s", err)
+			continue
+		}
+		log.Printf("Value: %d - Name: %s", value, name)
 	}
 	rows.Close()
 	log.Printf("Done")

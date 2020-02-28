@@ -3,6 +3,7 @@ package h2go
 import (
 	"database/sql/driver"
 	"fmt"
+	"io"
 	"log"
 	"net"
 
@@ -19,7 +20,11 @@ type h2Conn struct {
 	driver.Queryer
 }
 type h2Result struct {
-	query string
+	query   string
+	columns []string
+	numRows int32
+	curRow  int32
+	trans   *transfer
 }
 
 type h2connInfo struct {
@@ -56,11 +61,16 @@ func (h2c *h2Conn) Prepare(query string) (driver.Stmt, error) {
 func (h2c *h2Conn) Query(query string, args []driver.Value) (driver.Rows, error) {
 	log.Printf("Query: %s", query)
 	var err error
-	_, err = h2c.client.sess.prepare(&h2c.client.trans, query, args)
+	stmt, err := h2c.client.sess.prepare(&h2c.client.trans, query, args)
 	if err != nil {
 		return nil, err
 	}
-	return &h2Result{query}, nil
+	st, _ := stmt.(h2stmt)
+	cols, nRows, err := h2c.client.sess.executeQuery(&st, &h2c.client.trans)
+	if err != nil {
+		return nil, err
+	}
+	return &h2Result{query: query, columns: cols, numRows: nRows, trans: &h2c.client.trans, curRow: 0}, nil
 }
 
 // Rows interface
@@ -70,10 +80,30 @@ func (h2r *h2Result) Close() error {
 }
 
 func (h2r *h2Result) Columns() []string {
-	return []string{"jander", "sander"}
+	return h2r.columns
 }
 
 func (h2r *h2Result) Next(dest []driver.Value) error {
+	var err error
+	// log.Printf("LEN: %d", len(dest))
+	if h2r.curRow == h2r.numRows {
+		return io.EOF
+	}
+	h2r.curRow++
+	next, err := h2r.trans.readBool()
+	if err != nil {
+		return err
+	}
+	if !next {
+		return io.EOF
+	}
+	for i := range h2r.columns {
+		v, err := h2r.trans.readValue()
+		if err != nil {
+			return errors.Wrapf(err, "Can't read value")
+		}
+		dest[i] = driver.Value(v)
+	}
 	return nil
 }
 

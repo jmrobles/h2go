@@ -5,7 +5,8 @@ import (
 )
 
 type h2stmt struct {
-	id int32
+	id  int32
+	oID int32
 
 	driver.Stmt
 }

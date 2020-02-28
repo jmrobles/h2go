@@ -56,12 +56,6 @@ func (s *session) prepare(t *transfer, sql string, args []driver.Value) (driver.
 	if err != nil {
 		return stmt, err
 	}
-	// 3. Write Old Mod ID
-	// TODO: implement it
-	err = t.writeInt32(0)
-	if err != nil {
-		return stmt, err
-	}
 	// 4. Flush data and wait server info
 	err = t.flush()
 	if err != nil {
@@ -92,6 +86,134 @@ func (s *session) prepare(t *transfer, sql string, args []driver.Value) (driver.
 	return stmt, nil
 }
 
+func (s *session) executeQuery(stmt *h2stmt, t *transfer) ([]string, int32, error) {
+	var err error
+	// 0. Write COMMAND EXECUTE QUERY
+	log.Printf("Execute query")
+	err = t.writeInt32(sessionCommandExecuteQuery)
+	if err != nil {
+		return nil, -1, err
+	}
+	// 1. Write ID of query
+	//st := (*stmt).(h2stmt)
+	err = t.writeInt32(stmt.id)
+	if err != nil {
+		return nil, -1, err
+	}
+	// 2. Write Object ID
+	stmt.oID = s.getNextID()
+	err = t.writeInt32(stmt.oID)
+	if err != nil {
+		return nil, -1, err
+	}
+	// 3. Write Max rows
+	err = t.writeInt32(200)
+	if err != nil {
+		return nil, -1, err
+	}
+	// 4. Write Fetch max size
+	err = t.writeInt32(64)
+	if err != nil {
+		return nil, -1, err
+	}
+	// 4. Write Fetch max size
+	err = t.writeInt32(0)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	// 5. Flush data
+	err = t.flush()
+	if err != nil {
+		return nil, -1, err
+	}
+	// Read query status
+	status, err := t.readInt32()
+	if err != nil {
+		return nil, -1, err
+	}
+	colCnt, err := t.readInt32()
+	if err != nil {
+		return nil, -1, err
+	}
+	rowCnt, err := t.readInt32()
+	if err != nil {
+		return nil, -1, err
+	}
+	log.Printf("Status: %d - Num cols: %d - Num rows: %d", status, colCnt, rowCnt)
+	cols, err := s.readColumns(t, colCnt)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	return cols, rowCnt, nil
+}
+func (s *session) readColumns(t *transfer, colCnt int32) ([]string, error) {
+	// Alias
+	cols := []string{}
+	for i := 0; i < int(colCnt); i++ {
+		alias, err := t.readString()
+		if err != nil {
+			return nil, err
+		}
+		// Schema
+		// Ignored
+		_, err = t.readString()
+		if err != nil {
+			return nil, err
+		}
+		// TableName
+		// Ignored
+		_, err = t.readString()
+		if err != nil {
+			return nil, err
+		}
+		// Column name
+		colName, err := t.readString()
+		if err != nil {
+			return nil, err
+		}
+		// Skip other info
+		// - Value type (int)
+		_, err = t.readInt32()
+		if err != nil {
+			return nil, err
+		}
+		// - Precision (long)
+		_, err = t.readLong()
+		if err != nil {
+			return nil, err
+		}
+		// - Scale (int)
+		_, err = t.readInt32()
+		if err != nil {
+			return nil, err
+		}
+		// - Display Size (int)
+		_, err = t.readInt32()
+		if err != nil {
+			return nil, err
+		}
+		// - Autoincrement (bool)
+		_, err = t.readBool()
+		if err != nil {
+			return nil, err
+		}
+		// - Nullable (int)
+		_, err = t.readInt32()
+		if err != nil {
+			return nil, err
+		}
+		// Set columns name
+		if alias != "" {
+			cols = append(cols, alias)
+		} else {
+			cols = append(cols, colName)
+		}
+	}
+	return cols, nil
+
+}
 func (s *session) getNextID() int32 {
 	s.seqID++
 	return s.seqID
