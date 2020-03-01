@@ -1,10 +1,18 @@
 package h2go
 
 import (
-	"log"
+	"net"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
 )
+
+type h2client struct {
+	conn  net.Conn
+	trans transfer
+	sess  session
+}
 
 func (c *h2client) doHandshake(ci h2connInfo) error {
 	var err error
@@ -67,6 +75,6 @@ func (c *h2client) doHandshake(ci h2connInfo) error {
 	if err != nil {
 		return errors.Wrapf(err, "H2 handshake: can't get H2 Server client version ack")
 	}
-	log.Printf("H2 server code: %d - client ver: %d", code, clientVer)
+	L(log.InfoLevel, "H2 server code: %d - client ver: %d", code, clientVer)
 	return nil
 }

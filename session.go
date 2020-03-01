@@ -2,7 +2,8 @@ package h2go
 
 import (
 	"database/sql/driver"
-	"log"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -140,7 +141,7 @@ func (s *session) executeQuery(stmt *h2stmt, t *transfer) ([]string, int32, erro
 	if err != nil {
 		return nil, -1, err
 	}
-	log.Printf("Status: %d - Num cols: %d - Num rows: %d", status, colCnt, rowCnt)
+	L(log.DebugLevel, "Status: %d - Num cols: %d - Num rows: %d", status, colCnt, rowCnt)
 	cols, err := s.readColumns(t, colCnt)
 	if err != nil {
 		return nil, -1, err
