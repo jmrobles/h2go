@@ -2,7 +2,9 @@ package h2go
 
 import (
 	"database/sql/driver"
+	"fmt"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -64,6 +66,10 @@ func (s *session) prepare(t *transfer, sql string, args []driver.Value) (driver.
 	}
 	// 5. Read old state
 	state, err := t.readInt32()
+	if err != nil {
+		return stmt, err
+	}
+	err = s.checkSQLError(state, t)
 	if err != nil {
 		return stmt, err
 	}
@@ -133,6 +139,12 @@ func (s *session) executeQuery(stmt *h2stmt, t *transfer) ([]string, int32, erro
 	if err != nil {
 		return nil, -1, err
 	}
+	/*
+		err = s.checkSQLError(status, t)
+		if err != nil {
+			return nil, -1, err
+		}
+	*/
 	colCnt, err := t.readInt32()
 	if err != nil {
 		return nil, -1, err
@@ -218,4 +230,51 @@ func (s *session) readColumns(t *transfer, colCnt int32) ([]string, error) {
 func (s *session) getNextID() int32 {
 	s.seqID++
 	return s.seqID
+}
+
+type h2error struct {
+	strError  string
+	msg       string
+	sql       string
+	codeError int32
+	trace     string
+	error
+}
+
+func (s *session) checkSQLError(state int32, t *transfer) error {
+	if state == 1 {
+		return nil
+	}
+	// SQL Error
+	sqlError, err := t.readString()
+	if err != nil {
+		return errors.Wrapf(err, "SQL Error: unknown")
+	}
+	sqlMsg, err := t.readString()
+	if err != nil {
+		return errors.Wrapf(err, "SQL Error: unknown")
+	}
+	sqlSql, err := t.readString()
+	if err != nil {
+		return errors.Wrapf(err, "SQL Error: unknown")
+	}
+	errCode, err := t.readInt32()
+	if err != nil {
+		return errors.Wrapf(err, "SQL Error: unknown")
+	}
+	sqlTrace, err := t.readString()
+	if err != nil {
+		return errors.Wrapf(err, "SQL Error: unknown")
+	}
+
+	return newError(sqlError, sqlMsg, sqlSql, errCode, sqlTrace)
+
+}
+
+func newError(strError string, msg string, sql string, codeError int32, trace string) *h2error {
+	return &h2error{strError: strError, msg: msg, sql: sql, codeError: codeError, trace: trace}
+}
+func (err *h2error) Error() string {
+
+	return fmt.Sprintf("H2 SQL Exception: [%s] %s", err.strError, err.msg)
 }

@@ -14,7 +14,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("ERROR: %s", err)
 	}
-	rows, err := conn.Query("SELECT 1+2 AS ping, 'paco'")
+	// rows, err := conn.Query("SELECT 1+2 AS ping, 'paco'")
+	rows, err := conn.Query("SELECT name FROM TableNotExists")
 	if err != nil {
 		log.Fatalf("ERROR: %s", err)
 	}
