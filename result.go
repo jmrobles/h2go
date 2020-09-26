@@ -13,6 +13,9 @@ type h2Result struct {
 	numRows int32
 	curRow  int32
 	trans   *transfer
+
+	// Interface
+	driver.Rows
 }
 
 // Rows interface
@@ -47,4 +50,18 @@ func (h2r *h2Result) Next(dest []driver.Value) error {
 		dest[i] = driver.Value(v)
 	}
 	return nil
+}
+
+type h2ExecResult struct {
+	nUpdated int32
+	// Interface
+	driver.Result
+}
+
+func (h2er *h2ExecResult) LastInsertId() (int64, error) {
+	return 1, nil
+}
+
+func (h2er *h2ExecResult) RowsAffected() (int64, error) {
+	return int64(h2er.nUpdated), nil
 }

@@ -254,7 +254,7 @@ func (s *session) checkSQLError(state int32, t *transfer) error {
 	if err != nil {
 		return errors.Wrapf(err, "SQL Error: unknown")
 	}
-	sqlSql, err := t.readString()
+	sqlSQL, err := t.readString()
 	if err != nil {
 		return errors.Wrapf(err, "SQL Error: unknown")
 	}
@@ -267,7 +267,7 @@ func (s *session) checkSQLError(state int32, t *transfer) error {
 		return errors.Wrapf(err, "SQL Error: unknown")
 	}
 
-	return newError(sqlError, sqlMsg, sqlSql, errCode, sqlTrace)
+	return newError(sqlError, sqlMsg, sqlSQL, errCode, sqlTrace)
 
 }
 
@@ -277,4 +277,135 @@ func newError(strError string, msg string, sql string, codeError int32, trace st
 func (err *h2error) Error() string {
 
 	return fmt.Sprintf("H2 SQL Exception: [%s] %s", err.strError, err.msg)
+}
+
+func (s *session) executeQueryUpdate(stmt *h2stmt, t *transfer) (int32, error) {
+	var err error
+	// 0. Write COMMAND EXECUTE QUERY
+	log.Printf("Execute query update")
+	err = t.writeInt32(sessionCommandExecuteUpdate)
+	if err != nil {
+		return -1, err
+	}
+	// 1. Write ID of query
+	//st := (*stmt).(h2stmt)
+	err = t.writeInt32(stmt.id)
+	if err != nil {
+		return -1, err
+	}
+
+	// 2. Write num params
+	// TODO
+	err = t.writeInt32(0)
+	if err != nil {
+		return -1, err
+	}
+	// 3. Write Generate keys mode support
+	// TODO
+	err = t.writeInt32(0)
+	if err != nil {
+		return -1, err
+	}
+	err = t.flush()
+	if err != nil {
+		return -1, err
+	}
+	log.Printf("READ STATUS")
+	// Read query status
+	status, err := t.readInt32()
+	if err != nil {
+		return -1, err
+	}
+	// TODO: assert status == 1
+	// Read num rows updated
+	nUpdated, err := t.readInt32()
+	if err != nil {
+		return -1, err
+	}
+	// Read auto-commit status
+	// TODO
+	autoCommit, err := t.readBool()
+	if err != nil {
+		return -1, err
+	}
+	L(log.DebugLevel, "Status: %d - Num updated: %d - Autocommit: %v", status, nUpdated, autoCommit)
+	return nUpdated, nil
+}
+
+func (s *session) prepare2(t *transfer, sql string, args []driver.Value) (driver.Stmt, error) {
+	var err error
+	stmt := h2stmt{}
+	// 0. Write SESSION_PREPARE
+	err = t.writeInt32(sessionPrepareReadParams2)
+	// 1. Write ID
+	stmt.id = s.getNextID()
+	err = t.writeInt32(stmt.id)
+	if err != nil {
+		return stmt, err
+	}
+	// 2. Write SQL text
+	err = t.writeString(sql)
+	if err != nil {
+		return stmt, err
+	}
+
+	// 4. Flush data and wait server info
+	err = t.flush()
+	if err != nil {
+		return stmt, err
+	}
+	// 5. Read old state
+	state, err := t.readInt32()
+	if err != nil {
+		return stmt, err
+	}
+	err = s.checkSQLError(state, t)
+	if err != nil {
+		return stmt, err
+	}
+
+	// 6. Read Is Query
+	isQuery, err := t.readBool()
+	if err != nil {
+		return stmt, err
+	}
+	// 7. Read Is Read-only
+	isRO, err := t.readBool()
+	if err != nil {
+		return stmt, err
+	}
+	// Get command type
+	cmdType, err := t.readInt32()
+	if err != nil {
+		return stmt, err
+	}
+	log.Printf("CMD type: %d", cmdType)
+	// 8. Read params size
+	numParams, err := t.readInt32()
+	if err != nil {
+		return stmt, err
+	}
+	log.Printf("STATE: %d, IsQuery: %v, Is Read-Only: %v, Num Params: %d", state, isQuery, isRO, numParams)
+
+	return stmt, nil
+}
+
+func (s *session) close(t *transfer) error {
+	var err error
+	// 0. Write SESSION_CLOSE
+	err = t.writeInt32(sessionClose)
+	if err != nil {
+		return err
+	}
+	err = t.flush()
+	if err != nil {
+		return err
+	}
+	// 1. Write ID
+	status, err := t.readInt32()
+	if err != nil {
+		return err
+	}
+	log.Printf("Status: %d", status)
+	return nil
 }
