@@ -3,7 +3,9 @@ package h2go
 import (
 	"bufio"
 	"encoding/binary"
+	"fmt"
 	"net"
+	"unsafe"
 
 	"github.com/pkg/errors"
 	"golang.org/x/text/encoding/unicode"
@@ -66,6 +68,10 @@ func (t *transfer) readInt32() (int32, error) {
 }
 
 func (t *transfer) writeInt32(v int32) error {
+	return binary.Write(t.buff, binary.BigEndian, v)
+}
+
+func (t *transfer) writeInt64(v int64) error {
 	return binary.Write(t.buff, binary.BigEndian, v)
 }
 
@@ -160,12 +166,7 @@ func (t *transfer) readBytes() ([]byte, error) {
 	if n == -1 {
 		return nil, nil
 	}
-	buf := make([]byte, n)
-	n2, err := t.buff.Read(buf)
-	if n != int32(n2) {
-		return nil, errors.Errorf("Read byte size differs: %d != %d", n, n2)
-	}
-	return buf, nil
+	return t.readBytesDef(int(n))
 
 }
 
@@ -285,5 +286,49 @@ func (t *transfer) readValue() (interface{}, error) {
 	default:
 		return nil, errors.Errorf("Unknown type: %d", kind)
 	}
+
+}
+
+func (t *transfer) writeValue(v interface{}) error {
+	switch kind := v.(type) {
+	case nil:
+		t.writeInt32(Null)
+	case int:
+		s := unsafe.Sizeof(v)
+		if s == 4 {
+			t.writeInt32(Int)
+			t.writeInt32(int32(v.(int)))
+		} else {
+			// 8 bytes
+			t.writeInt32(Long)
+			t.writeInt64(int64(v.(int)))
+		}
+	case int32:
+		t.writeInt32(Int)
+		t.writeInt32(int32(v.(int32)))
+	case int64:
+		t.writeInt32(Long)
+		t.writeInt64(int64(v.(int64)))
+	case string:
+		t.writeInt32(String)
+		t.writeString(v.(string))
+	// case time.Time:
+	default:
+		return fmt.Errorf("Can't convert type %v to H2 Type", kind)
+	}
+	return nil
+}
+
+func (t *transfer) readBytesDef(n int) ([]byte, error) {
+
+	buf := make([]byte, n)
+	n2, err := t.buff.Read(buf)
+	if err != nil {
+		return nil, err
+	}
+	if n != n2 {
+		return nil, errors.Errorf("Read byte size differs: %d != %d", n, n2)
+	}
+	return buf, nil
 
 }

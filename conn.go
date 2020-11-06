@@ -68,7 +68,7 @@ func (h2c *h2Conn) ExecContext(ctx context.Context, query string, args []driver.
 		return nil, err
 	}
 	st, _ := stmt.(h2stmt)
-	nUpdated, err := h2c.client.sess.executeQueryUpdate(&st, &h2c.client.trans)
+	nUpdated, err := h2c.client.sess.executeQueryUpdate(&st, &h2c.client.trans, argsValues)
 	return &h2ExecResult{nUpdated: nUpdated}, nil
 }
 

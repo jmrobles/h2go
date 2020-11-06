@@ -279,8 +279,12 @@ func (err *h2error) Error() string {
 	return fmt.Sprintf("H2 SQL Exception: [%s] %s", err.strError, err.msg)
 }
 
-func (s *session) executeQueryUpdate(stmt *h2stmt, t *transfer) (int32, error) {
+func (s *session) executeQueryUpdate(stmt *h2stmt, t *transfer, values []driver.Value) (int32, error) {
 	var err error
+	// Check for params
+	if stmt.numParams != int32(len(values)) {
+		return -1, fmt.Errorf("Num expected parameters mismatch: %d != %d", stmt.numParams, len(values))
+	}
 	// 0. Write COMMAND EXECUTE QUERY
 	log.Printf("Execute query update")
 	err = t.writeInt32(sessionCommandExecuteUpdate)
@@ -293,12 +297,18 @@ func (s *session) executeQueryUpdate(stmt *h2stmt, t *transfer) (int32, error) {
 	if err != nil {
 		return -1, err
 	}
-
-	// 2. Write num params
-	// TODO
-	err = t.writeInt32(0)
+	// 2. Write params
+	// -- num parameters
+	err = t.writeInt32(stmt.numParams)
 	if err != nil {
 		return -1, err
+	}
+	// -- parameters
+	for _, value := range values {
+		err = t.writeValue(value)
+		if err != nil {
+			return -1, err
+		}
 	}
 	// 3. Write Generate keys mode support
 	// TODO
@@ -354,7 +364,7 @@ func (s *session) prepare2(t *transfer, sql string, args []driver.Value) (driver
 	if err != nil {
 		return stmt, err
 	}
-	// 5. Read old state
+	// 5. Read state
 	state, err := t.readInt32()
 	if err != nil {
 		return stmt, err
@@ -386,7 +396,19 @@ func (s *session) prepare2(t *transfer, sql string, args []driver.Value) (driver
 		return stmt, err
 	}
 	log.Printf("STATE: %d, IsQuery: %v, Is Read-Only: %v, Num Params: %d", state, isQuery, isRO, numParams)
+	stmt.isQuery = isQuery
+	stmt.isRO = isRO
+	stmt.numParams = numParams
+	// TODO: int:type - long:precission - int:scale - int:nullable
+	//       Ignoring by now: 4 + 8 + 4 + 4 => 20 bytes
 
+	for i := 0; i < int(numParams); i++ {
+		_, err := t.readBytesDef(20)
+		if err != nil {
+			return nil, fmt.Errorf("Can't read parameters metadata: %s", err)
+		}
+
+	}
 	return stmt, nil
 }
 

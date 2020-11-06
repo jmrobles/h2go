@@ -37,12 +37,12 @@ func main() {
 	// rows.Close()
 
 	// Create table
-	// log.Printf("CREATE TABLE")
-	// ret, err := conn.Exec("CREATE TABLE public.paco (id int)")
-	// if err != nil {
-	// 	log.Printf("Can't execute sentence: %s", err)
-	// 	return
-	// }
+	log.Printf("CREATE TABLE")
+	ret, err := conn.Exec("CREATE TABLE public.paco (id int, name varchar(100))")
+	if err != nil {
+		log.Printf("Can't execute sentence: %s", err)
+		return
+	}
 	// log.Printf("Ret: %v", ret)
 	// lastID, err := ret.LastInsertId()
 	// if err != nil {
@@ -53,7 +53,7 @@ func main() {
 	// 	log.Printf("Can't get num rows: %s", err)
 	// }
 	// log.Printf("LastID: %d - NumRowsAffected: %d", lastID, nRows)
-	ret, err := conn.Exec("INSERT INTO public.paco VALUES (15), (20)")
+	ret, err = conn.Exec("INSERT INTO public.paco VALUES (?, ?)", 26, "sander")
 	if err != nil {
 		log.Printf("Can't execute sentence: %s", err)
 		return
@@ -68,6 +68,39 @@ func main() {
 		log.Printf("Can't get num rows: %s", err)
 	}
 	log.Printf("LastID: %d - NumRowsAffected: %d", lastID, nRows)
+
+	ret, err = conn.Exec("INSERT INTO public.paco VALUES (100, 'paco')")
+	if err != nil {
+		log.Printf("Can't execute sentence: %s", err)
+		return
+	}
+	log.Printf("Ret: %v", ret)
+	lastID, err = ret.LastInsertId()
+	if err != nil {
+		log.Printf("Can't get last ID: %s", err)
+	}
+	nRows, err = ret.RowsAffected()
+	if err != nil {
+		log.Printf("Can't get num rows: %s", err)
+	}
+	log.Printf("LastID: %d - NumRowsAffected: %d", lastID, nRows)
+
+	ret, err = conn.Exec("DELETE FROM paco WHERE id = 100")
+	if err != nil {
+		log.Printf("Can't execute sentence: %s", err)
+		return
+	}
+	log.Printf("Ret: %v", ret)
+	lastID, err = ret.LastInsertId()
+	if err != nil {
+		log.Printf("Can't get last ID: %s", err)
+	}
+	nRows, err = ret.RowsAffected()
+	if err != nil {
+		log.Printf("Can't get num rows: %s", err)
+	}
+	log.Printf("LastID: %d - NumRowsAffected: %d", lastID, nRows)
+
 	// rows, err := conn.Query("SELECT 1+2 AS ping, 'paco'")
 	rows, err := conn.Query("SELECT * FROM paco")
 	if err != nil {
@@ -81,7 +114,7 @@ func main() {
 	var value int
 	var name string
 	for rows.Next() {
-		err := rows.Scan(&value)
+		err := rows.Scan(&value, &name)
 		if err != nil {
 			log.Printf("Can't get value: %s", err)
 			continue
