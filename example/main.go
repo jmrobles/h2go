@@ -55,25 +55,9 @@ func main() {
 	// }
 	// log.Printf("LastID: %d - NumRowsAffected: %d", lastID, nRows)
 
-	// var numAtoms float64 = 123456789.0
-	// now := time.Now()
-	// ret, err = conn.Exec("INSERT INTO paco VALUES (?, ?, ?, ?, ?, ?)", 26, "sander", 3.14, false, numAtoms, now)
-	// if err != nil {
-	// 	log.Printf("Can't execute sentence: %s", err)
-	// 	return
-	// }
-	// log.Printf("Ret: %v", ret)
-	// lastID, err := ret.LastInsertId()
-	// if err != nil {
-	// 	log.Printf("Can't get last ID: %s", err)
-	// }
-	// nRows, err := ret.RowsAffected()
-	// if err != nil {
-	// 	log.Printf("Can't get num rows: %s", err)
-	// }
-	// log.Printf("LastID: %d - NumRowsAffected: %d", lastID, nRows)
-
-	ret, err = conn.Exec("INSERT INTO public.paco VALUES (100, 'paco', 1.51, false, 1.0, DATE '2019-01-01')")
+	var numAtoms float64 = 123456789.0
+	now := time.Now()
+	ret, err = conn.Exec("INSERT INTO paco VALUES (?, ?, ?, ?, ?, ?)", 26, "sander", 3.14, false, numAtoms, now)
 	if err != nil {
 		log.Printf("Can't execute sentence: %s", err)
 		return
@@ -84,6 +68,22 @@ func main() {
 		log.Printf("Can't get last ID: %s", err)
 	}
 	nRows, err := ret.RowsAffected()
+	if err != nil {
+		log.Printf("Can't get num rows: %s", err)
+	}
+	log.Printf("LastID: %d - NumRowsAffected: %d", lastID, nRows)
+
+	ret, err = conn.Exec("INSERT INTO public.paco VALUES (100, 'paco', 1.51, false, 1.0, DATE '2019-01-01')")
+	if err != nil {
+		log.Printf("Can't execute sentence: %s", err)
+		return
+	}
+	log.Printf("Ret: %v", ret)
+	lastID, err = ret.LastInsertId()
+	if err != nil {
+		log.Printf("Can't get last ID: %s", err)
+	}
+	nRows, err = ret.RowsAffected()
 	if err != nil {
 		log.Printf("Can't get num rows: %s", err)
 	}

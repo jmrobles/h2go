@@ -381,9 +381,19 @@ func (t *transfer) writeValue(v interface{}) error {
 }
 func (t *transfer) writeDatetimeValue(dt time.Time, mdp h2parameter) error {
 	log.Printf("DT type: %d", mdp.kind)
-	t.writeInt32(Date)
-	log.Printf("DATE: %d", dt.Unix())
-	t.writeInt64(dt.Unix())
+	var err error
+	switch mdp.kind {
+	case Date:
+		t.writeInt32(Date)
+		var bin int64
+		bin = int64((dt.Year() << 9) + (int(dt.Month()) << 5) + dt.Day())
+		err = t.writeInt64(bin)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("Datatype unsupported: %d", mdp.kind)
+	}
 	return nil
 }
 func (t *transfer) readBytesDef(n int) ([]byte, error) {
