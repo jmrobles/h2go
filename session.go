@@ -3,6 +3,7 @@ package h2go
 import (
 	"database/sql/driver"
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -304,8 +305,13 @@ func (s *session) executeQueryUpdate(stmt *h2stmt, t *transfer, values []driver.
 		return -1, err
 	}
 	// -- parameters
-	for _, value := range values {
-		err = t.writeValue(value)
+	for idx, value := range values {
+		switch value.(type) {
+		case time.Time:
+			err = t.writeDatetimeValue(value.(time.Time), stmt.parameters[idx])
+		default:
+			err = t.writeValue(value)
+		}
 		if err != nil {
 			return -1, err
 		}
@@ -399,15 +405,34 @@ func (s *session) prepare2(t *transfer, sql string, args []driver.Value) (driver
 	stmt.isQuery = isQuery
 	stmt.isRO = isRO
 	stmt.numParams = numParams
-	// TODO: int:type - long:precission - int:scale - int:nullable
-	//       Ignoring by now: 4 + 8 + 4 + 4 => 20 bytes
-
+	// We receive metadata for each parameter
+	// Metadata parameter type: int:type - long:precission - int:scale - int:nullable
 	for i := 0; i < int(numParams); i++ {
-		_, err := t.readBytesDef(20)
+		param := h2parameter{}
+		// -- Type
+		param.kind, err = t.readInt32()
 		if err != nil {
-			return nil, fmt.Errorf("Can't read parameters metadata: %s", err)
+			return nil, err
 		}
-
+		// -- Precission
+		param.precission, err = t.readInt64()
+		if err != nil {
+			return nil, err
+		}
+		// -- Scale
+		param.scale, err = t.readInt32()
+		if err != nil {
+			return nil, err
+		}
+		// -- Nullable
+		tmp, err := t.readInt32()
+		if err != nil {
+			return nil, err
+		}
+		// 0 = Not null, 1 == Nullable, 2 == Unknown
+		param.nullable = tmp == 1
+		log.Printf("PARAM: Kind: %d - Precission: %d - Scale: %d - Nullable: %v", param.kind, param.precission, param.scale, param.nullable)
+		stmt.parameters = append(stmt.parameters, param)
 	}
 	return stmt, nil
 }

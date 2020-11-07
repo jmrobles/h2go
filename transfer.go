@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
+	"log"
 	"net"
+	"time"
 	"unsafe"
 
 	"github.com/pkg/errors"
@@ -61,10 +63,36 @@ func (t *transfer) readInt32() (int32, error) {
 	var ret int32
 	err := binary.Read(t.buff, binary.BigEndian, &ret)
 	if err != nil {
-		return -1, errors.Wrapf(err, "can't read int value from socket")
+		return -1, errors.Wrapf(err, "can't read int32 value from socket")
 	}
 	return ret, nil
+}
 
+func (t *transfer) readInt64() (int64, error) {
+	var ret int64
+	err := binary.Read(t.buff, binary.BigEndian, &ret)
+	if err != nil {
+		return -1, errors.Wrapf(err, "can't read int64 value from socket")
+	}
+	return ret, nil
+}
+
+func (t *transfer) readFloat32() (float32, error) {
+	var ret float32
+	err := binary.Read(t.buff, binary.BigEndian, &ret)
+	if err != nil {
+		return -1, errors.Wrapf(err, "can't read float32 value from socket")
+	}
+	return ret, nil
+}
+
+func (t *transfer) readFloat64() (float64, error) {
+	var ret float64
+	err := binary.Read(t.buff, binary.BigEndian, &ret)
+	if err != nil {
+		return -1, errors.Wrapf(err, "can't read float64 value from socket")
+	}
+	return ret, nil
 }
 
 func (t *transfer) writeInt32(v int32) error {
@@ -72,6 +100,9 @@ func (t *transfer) writeInt32(v int32) error {
 }
 
 func (t *transfer) writeInt64(v int64) error {
+	return binary.Write(t.buff, binary.BigEndian, v)
+}
+func (t *transfer) writeFloat64(v float64) error {
 	return binary.Write(t.buff, binary.BigEndian, v)
 }
 
@@ -169,6 +200,17 @@ func (t *transfer) readBytes() ([]byte, error) {
 	return t.readBytesDef(int(n))
 
 }
+func (t *transfer) writeBool(b bool) error {
+	var v byte = 0
+	if b {
+		v = 1
+	}
+	return t.writeByte(v)
+}
+
+func (t *transfer) writeByte(b byte) error {
+	return t.buff.WriteByte(b)
+}
 
 func (t *transfer) writeBytes(data []byte) error {
 	var err error
@@ -214,6 +256,17 @@ func (t *transfer) readLong() (int64, error) {
 	}
 	return ret, nil
 }
+func (t *transfer) readDate() (time.Time, error) {
+	n, err := t.readInt64()
+	if err != nil {
+		return time.Time{}, err
+	}
+	days := int(n & 0x1f)
+	month := time.Month((n >> 5) & 0xf)
+	year := int(n >> 9)
+	date := time.Date(year, month, days, 0, 0, 0, 0, time.UTC)
+	return date, nil
+}
 
 func (t *transfer) flush() error {
 	return t.buff.Flush()
@@ -225,6 +278,7 @@ func (t *transfer) readValue() (interface{}, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't read type of value")
 	}
+	log.Printf(">>> Value kind: %d", kind)
 	switch kind {
 	case Null:
 		// TODO: review
@@ -240,7 +294,7 @@ func (t *transfer) readValue() (interface{}, error) {
 	case Byte:
 		return t.readByte()
 	case Date:
-		return nil, errors.Errorf("Date not implemented")
+		return t.readDate()
 	case Time:
 		return nil, errors.Errorf("Time not implemented")
 	case TimeTZ:
@@ -252,9 +306,9 @@ func (t *transfer) readValue() (interface{}, error) {
 	case Decimal:
 		return nil, errors.Errorf("Decimal not implemented")
 	case Double:
-		return nil, errors.Errorf("Double not implemented")
+		return t.readFloat64()
 	case Float:
-		return nil, errors.Errorf("Float not implemented")
+		return t.readFloat32()
 	case Enum:
 		return nil, errors.Errorf("Enum not implemented")
 	case Int:
@@ -284,6 +338,7 @@ func (t *transfer) readValue() (interface{}, error) {
 	case JSON:
 		return nil, errors.Errorf("JSON not implemented")
 	default:
+		log.Printf("Unknown type: %d", kind)
 		return nil, errors.Errorf("Unknown type: %d", kind)
 	}
 
@@ -293,6 +348,9 @@ func (t *transfer) writeValue(v interface{}) error {
 	switch kind := v.(type) {
 	case nil:
 		t.writeInt32(Null)
+	case bool:
+		t.writeInt32(Boolean)
+		t.writeBool(v.(bool))
 	case int:
 		s := unsafe.Sizeof(v)
 		if s == 4 {
@@ -309,16 +367,25 @@ func (t *transfer) writeValue(v interface{}) error {
 	case int64:
 		t.writeInt32(Long)
 		t.writeInt64(int64(v.(int64)))
+	case float64:
+		t.writeInt32(Double)
+		t.writeFloat64(v.(float64))
 	case string:
 		t.writeInt32(String)
 		t.writeString(v.(string))
 	// case time.Time:
 	default:
-		return fmt.Errorf("Can't convert type %v to H2 Type", kind)
+		return fmt.Errorf("Can't convert type %T to H2 Type", kind)
 	}
 	return nil
 }
-
+func (t *transfer) writeDatetimeValue(dt time.Time, mdp h2parameter) error {
+	log.Printf("DT type: %d", mdp.kind)
+	t.writeInt32(Date)
+	log.Printf("DATE: %d", dt.Unix())
+	t.writeInt64(dt.Unix())
+	return nil
+}
 func (t *transfer) readBytesDef(n int) ([]byte, error) {
 
 	buf := make([]byte, n)
