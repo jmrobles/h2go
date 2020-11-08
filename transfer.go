@@ -43,7 +43,8 @@ const (
 	Interval         int32 = 26
 	Row              int32 = 27
 	JSON             int32 = 28
-	TimeTZ           int32 = 29
+	TimeTZQuery      int32 = 29
+	TimeTZ           int32 = 41
 )
 
 type transfer struct {
@@ -323,9 +324,9 @@ func (t *transfer) readValue() (interface{}, error) {
 	case Date:
 		return t.readDate()
 	case Time:
-		return nil, errors.Errorf("Time not implemented")
-	case TimeTZ:
-		return nil, errors.Errorf("Time TZ not implemented")
+		return t.readTime()
+	case TimeTZQuery, TimeTZ:
+		return t.readTimeTZ()
 	case Timestamp:
 		return t.readTimestamp()
 	case TimestampTZ:
@@ -443,6 +444,25 @@ func (t *transfer) writeDatetimeValue(dt time.Time, mdp h2parameter) error {
 		if err != nil {
 			return err
 		}
+	case Time:
+		t.writeInt32(Time)
+		nsecBin := time2bin(&dt)
+		err = t.writeInt64(nsecBin)
+		if err != nil {
+			return err
+		}
+	case TimeTZ:
+		t.writeInt32(TimeTZQuery)
+		nsecBin, offsetTZBin := timetz2bin(&dt)
+		log.Printf("%d - %d", nsecBin, offsetTZBin)
+		err = t.writeInt64(nsecBin)
+		if err != nil {
+			return err
+		}
+		err = t.writeInt32(offsetTZBin)
+		if err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("Datatype unsupported: %d", mdp.kind)
 	}
@@ -521,4 +541,66 @@ func tsz2bin(dt *time.Time) (int64, int64, int32) {
 	nsecBin += int64(dt.Nanosecond())
 	_, offsetTZ := dt.Zone()
 	return dateBin, nsecBin, int32(offsetTZ)
+}
+
+func time2bin(dt *time.Time) int64 {
+	var nsecBin int64
+	nsecBin = int64(dt.Hour()*3600 + dt.Minute()*60 + dt.Second())
+	nsecBin *= int64(1e9)
+	nsecBin += int64(dt.Nanosecond())
+	return nsecBin
+}
+
+func bin2time(nsecBin int64) time.Time {
+	// TODO: optimization
+	nsecs := int(nsecBin % int64(1e9))
+	nsecBin = nsecBin / int64(1e9)
+	sec := int(nsecBin % 60)
+	nsecBin = nsecBin / 60
+	minute := int(nsecBin % 60)
+	hour := int(nsecBin / 60)
+	return time.Date(0, 1, 1, hour, minute, sec, nsecs, time.UTC)
+}
+
+func (t *transfer) readTime() (time.Time, error) {
+	nNsecs, err := t.readInt64()
+	if err != nil {
+		return time.Time{}, err
+	}
+	date := bin2time(nNsecs)
+	return date, nil
+}
+
+func (t *transfer) readTimeTZ() (time.Time, error) {
+	nNsecs, err := t.readInt64()
+	if err != nil {
+		return time.Time{}, err
+	}
+	nDiffTZ, err := t.readInt32()
+	if err != nil {
+		return time.Time{}, err
+	}
+	date := bin2timetz(nNsecs, nDiffTZ)
+	return date, nil
+}
+
+func bin2timetz(nsecBin int64, secsTZ int32) time.Time {
+	// TODO: optimization
+	nsecs := int(nsecBin % int64(1e9))
+	nsecBin = nsecBin / int64(1e9)
+	sec := int(nsecBin % 60)
+	nsecBin = nsecBin / 60
+	minute := int(nsecBin % 60)
+	hour := int(nsecBin / 60)
+	tz := time.FixedZone(fmt.Sprintf("tz_%d", secsTZ), int(secsTZ))
+	return time.Date(0, 1, 1, hour, minute, sec, nsecs, tz)
+}
+
+func timetz2bin(dt *time.Time) (int64, int32) {
+	var nsecBin int64
+	nsecBin = int64(dt.Hour()*3600 + dt.Minute()*60 + dt.Second())
+	nsecBin *= int64(1e9)
+	nsecBin += int64(dt.Nanosecond())
+	_, offsetTZ := dt.Zone()
+	return nsecBin, int32(offsetTZ)
 }
