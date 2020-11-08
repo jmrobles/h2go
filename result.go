@@ -42,6 +42,7 @@ func (h2r *h2Result) Next(dest []driver.Value) error {
 	if !next {
 		return io.EOF
 	}
+	// log.Printf(">>> DEST: %v", dest)
 	for i := range h2r.columns {
 		v, err := h2r.trans.readValue()
 		if err != nil {

@@ -68,7 +68,13 @@ func (t *transfer) readInt32() (int32, error) {
 	}
 	return ret, nil
 }
-
+func (t *transfer) readInt16() (int16, error) {
+	n, err := t.readInt32()
+	if err != nil {
+		return int16(-1), err
+	}
+	return int16(n), err
+}
 func (t *transfer) readInt64() (int64, error) {
 	var ret int64
 	err := binary.Read(t.buff, binary.BigEndian, &ret)
@@ -344,7 +350,7 @@ func (t *transfer) readValue() (interface{}, error) {
 	case Long:
 		return t.readLong()
 	case Short:
-		return nil, errors.Errorf("Short not implemented")
+		return t.readInt16()
 	case String:
 		return t.readString()
 	case StringIgnoreCase:
@@ -389,6 +395,9 @@ func (t *transfer) writeValue(v interface{}) error {
 			t.writeInt32(Long)
 			t.writeInt64(int64(v.(int)))
 		}
+	case int16:
+		t.writeInt32(Short)
+		t.writeInt32(v.(int32))
 	case int32:
 		t.writeInt32(Int)
 		t.writeInt32(int32(v.(int32)))
@@ -401,6 +410,12 @@ func (t *transfer) writeValue(v interface{}) error {
 	case string:
 		t.writeInt32(String)
 		t.writeString(v.(string))
+	case byte:
+		t.writeInt32(Byte)
+		t.writeByte(v.(byte))
+	case []byte:
+		t.writeInt32(Bytes)
+		t.writeBytes(v.([]byte))
 	// case time.Time:
 	default:
 		return fmt.Errorf("Can't convert type %T to H2 Type", kind)
