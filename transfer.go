@@ -261,10 +261,37 @@ func (t *transfer) readDate() (time.Time, error) {
 	if err != nil {
 		return time.Time{}, err
 	}
-	days := int(n & 0x1f)
-	month := time.Month((n >> 5) & 0xf)
-	year := int(n >> 9)
-	date := time.Date(year, month, days, 0, 0, 0, 0, time.UTC)
+	date := bin2date(n)
+	return date, nil
+}
+
+func (t *transfer) readTimestamp() (time.Time, error) {
+	nDate, err := t.readInt64()
+	if err != nil {
+		return time.Time{}, err
+	}
+	nNsecs, err := t.readInt64()
+	if err != nil {
+		return time.Time{}, err
+	}
+	date := bin2ts(nDate, nNsecs)
+	return date, nil
+}
+
+func (t *transfer) readTimestampTZ() (time.Time, error) {
+	nDate, err := t.readInt64()
+	if err != nil {
+		return time.Time{}, err
+	}
+	nNsecs, err := t.readInt64()
+	if err != nil {
+		return time.Time{}, err
+	}
+	nDiffTZ, err := t.readInt32()
+	if err != nil {
+		return time.Time{}, err
+	}
+	date := bin2tsz(nDate, nNsecs, nDiffTZ)
 	return date, nil
 }
 
@@ -300,9 +327,9 @@ func (t *transfer) readValue() (interface{}, error) {
 	case TimeTZ:
 		return nil, errors.Errorf("Time TZ not implemented")
 	case Timestamp:
-		return nil, errors.Errorf("Timestamp not implemented")
+		return t.readTimestamp()
 	case TimestampTZ:
-		return nil, errors.Errorf("Timestamp TZ not implemented")
+		return t.readTimestampTZ()
 	case Decimal:
 		return nil, errors.Errorf("Decimal not implemented")
 	case Double:
@@ -385,9 +412,34 @@ func (t *transfer) writeDatetimeValue(dt time.Time, mdp h2parameter) error {
 	switch mdp.kind {
 	case Date:
 		t.writeInt32(Date)
-		var bin int64
-		bin = int64((dt.Year() << 9) + (int(dt.Month()) << 5) + dt.Day())
+		bin := date2bin(&dt)
 		err = t.writeInt64(bin)
+		if err != nil {
+			return err
+		}
+	case Timestamp:
+		t.writeInt32(Timestamp)
+		dateBin, nsecBin := ts2bin(&dt)
+		err = t.writeInt64(dateBin)
+		if err != nil {
+			return err
+		}
+		err = t.writeInt64(nsecBin)
+		if err != nil {
+			return err
+		}
+	case TimestampTZ:
+		t.writeInt32(TimestampTZ)
+		dateBin, nsecBin, offsetTZBin := tsz2bin(&dt)
+		err = t.writeInt64(dateBin)
+		if err != nil {
+			return err
+		}
+		err = t.writeInt64(nsecBin)
+		if err != nil {
+			return err
+		}
+		err = t.writeInt32(offsetTZBin)
 		if err != nil {
 			return err
 		}
@@ -408,4 +460,65 @@ func (t *transfer) readBytesDef(n int) ([]byte, error) {
 	}
 	return buf, nil
 
+}
+
+// Helpers
+
+func date2bin(dt *time.Time) int64 {
+	return int64((dt.Year() << 9) + (int(dt.Month()) << 5) + dt.Day())
+}
+
+func bin2date(n int64) time.Time {
+	day := int(n & 0x1f)
+	month := time.Month((n >> 5) & 0xf)
+	year := int(n >> 9)
+	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+}
+
+func ts2bin(dt *time.Time) (int64, int64) {
+	var nsecBin int64
+	dateBin := date2bin(dt)
+	nsecBin = int64(dt.Hour()*3600 + dt.Minute()*60 + dt.Second())
+	nsecBin *= int64(1e9)
+	nsecBin += int64(dt.Nanosecond())
+	return dateBin, nsecBin
+}
+
+func bin2ts(dateBin int64, nsecBin int64) time.Time {
+	// TODO: optimization
+	day := int(dateBin & 0x1f)
+	month := time.Month((dateBin >> 5) & 0xf)
+	year := int(dateBin >> 9)
+	nsecs := int(nsecBin % int64(1e9))
+	nsecBin = nsecBin / int64(1e9)
+	sec := int(nsecBin % 60)
+	nsecBin = nsecBin / 60
+	minute := int(nsecBin % 60)
+	hour := int(nsecBin / 60)
+	return time.Date(year, month, day, hour, minute, sec, nsecs, time.UTC)
+}
+
+func bin2tsz(dateBin int64, nsecBin int64, secsTZ int32) time.Time {
+	// TODO: optimization
+	day := int(dateBin & 0x1f)
+	month := time.Month((dateBin >> 5) & 0xf)
+	year := int(dateBin >> 9)
+	nsecs := int(nsecBin % int64(1e9))
+	nsecBin = nsecBin / int64(1e9)
+	sec := int(nsecBin % 60)
+	nsecBin = nsecBin / 60
+	minute := int(nsecBin % 60)
+	hour := int(nsecBin / 60)
+	tz := time.FixedZone(fmt.Sprintf("tz_%d", secsTZ), int(secsTZ))
+	return time.Date(year, month, day, hour, minute, sec, nsecs, tz)
+}
+
+func tsz2bin(dt *time.Time) (int64, int64, int32) {
+	var nsecBin int64
+	dateBin := date2bin(dt)
+	nsecBin = int64(dt.Hour()*3600 + dt.Minute()*60 + dt.Second())
+	nsecBin *= int64(1e9)
+	nsecBin += int64(dt.Nanosecond())
+	_, offsetTZ := dt.Zone()
+	return dateBin, nsecBin, int32(offsetTZ)
 }

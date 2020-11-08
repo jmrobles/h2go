@@ -39,7 +39,7 @@ func main() {
 
 	// Create table
 	log.Printf("CREATE TABLE")
-	ret, err := conn.Exec("CREATE TABLE paco (id int not null, name varchar(100), height float, isMale boolean, numAtoms double, dob date)")
+	ret, err := conn.Exec("CREATE TABLE paco (id int not null, name varchar(100), height float, isMale boolean, numAtoms double, dob date, ts timestamp, tsz timestamp with time zone)")
 	if err != nil {
 		log.Printf("Can't execute sentence: %s", err)
 		return
@@ -57,7 +57,8 @@ func main() {
 
 	var numAtoms float64 = 123456789.0
 	now := time.Now()
-	ret, err = conn.Exec("INSERT INTO paco VALUES (?, ?, ?, ?, ?, ?)", 26, "sander", 3.14, false, numAtoms, now)
+	ret, err = conn.Exec("INSERT INTO paco VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		26, "sander", 3.14, false, numAtoms, now, now, now)
 	if err != nil {
 		log.Printf("Can't execute sentence: %s", err)
 		return
@@ -73,7 +74,7 @@ func main() {
 	}
 	log.Printf("LastID: %d - NumRowsAffected: %d", lastID, nRows)
 
-	ret, err = conn.Exec("INSERT INTO public.paco VALUES (100, 'paco', 1.51, false, 1.0, DATE '2019-01-01')")
+	ret, err = conn.Exec("INSERT INTO paco VALUES (100, 'paco', 1.51, false, 1.0, DATE '2019-01-01', TIMESTAMP '1970-01-01 00:00:01', TIMESTAMP WITH TIME ZONE '2005-12-01 10:59:59.123+02')")
 	if err != nil {
 		log.Printf("Can't execute sentence: %s", err)
 		return
@@ -121,15 +122,17 @@ func main() {
 	var isMale bool
 	var numAtoms2 float64
 	var dob time.Time
+	var ts time.Time
+	var tsz time.Time
 	for rows.Next() {
 		log.Printf("ROWS")
-		err := rows.Scan(&value, &name, &height, &isMale, &numAtoms2, &dob)
+		err := rows.Scan(&value, &name, &height, &isMale, &numAtoms2, &dob, &ts, &tsz)
 		if err != nil {
 			log.Printf("Can't get value: %s", err)
 			continue
 		}
-		log.Printf("Value: %d - Name: %s - Height: %f - Is Male: %v - Atoms: %f - Dob: %s",
-			value, name, height, isMale, numAtoms2, dob)
+		log.Printf("Value: %d - Name: %s - Height: %f - Is Male: %v - Atoms: %f - Dob: %s - TS: %s - TSZ: %s",
+			value, name, height, isMale, numAtoms2, dob, ts, tsz)
 	}
 	rows.Close()
 	conn.Close()
