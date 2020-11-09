@@ -20,9 +20,34 @@ type h2Conn struct {
 
 	// Interfaces
 	driver.Conn
+	driver.Pinger
+	driver.Validator
 	// TODO: replace with QueryerContext instead of Queryer
 	driver.Queryer
 	driver.ExecerContext
+}
+
+// Pinger interface
+func (h2c h2Conn) Ping(ctx context.Context) error {
+	L(log.DebugLevel, "Ping")
+	var err error
+	stmt, err := h2c.client.sess.prepare(&h2c.client.trans, "SELECT 1", []driver.Value{})
+	if err != nil {
+		return driver.ErrBadConn
+	}
+	st, _ := stmt.(h2stmt)
+	_, _, err = h2c.client.sess.executeQuery(&st, &h2c.client.trans)
+	if err != nil {
+		return driver.ErrBadConn
+	}
+	return nil
+}
+
+// Validator interface
+func (h2c h2Conn) IsValid() bool {
+	// TODO: check for real valid connection
+	L(log.DebugLevel, "IsValid")
+	return true
 }
 
 // Conn interface
