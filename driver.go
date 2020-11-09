@@ -1,6 +1,7 @@
 package h2go
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 
@@ -26,10 +27,20 @@ type h2connInfo struct {
 
 	dialer net.Dialer
 }
-type h2Driver struct{}
+type h2Driver struct {
+	driver.DriverContext
+	driver.Driver
+}
 
-func (h2d *h2Driver) Open(dsn string) (driver.Conn, error) {
-	ci, err := h2d.parseURL(dsn)
+type h2Connector struct {
+	driver.Connector
+
+	ci     h2connInfo
+	driver h2Driver
+}
+
+func (h2d h2Driver) Open(dsn string) (driver.Conn, error) {
+	ci, err := parseURL(dsn)
 	L(log.InfoLevel, "Open")
 	L(log.DebugLevel, "Open with dsn: %s", dsn)
 	if err != nil {
@@ -38,7 +49,30 @@ func (h2d *h2Driver) Open(dsn string) (driver.Conn, error) {
 	return connect(ci)
 }
 
-func (h2d *h2Driver) parseURL(dsnurl string) (h2connInfo, error) {
+func (h2d *h2Driver) OpenConnector(dsn string) (driver.Connector, error) {
+	L(log.DebugLevel, "OpenConnector")
+	ci, err := parseURL(dsn)
+	if err != nil {
+		return nil, err
+	}
+	return &h2Connector{ci: ci, driver: *h2d}, nil
+}
+
+func (h2c *h2Connector) Connect(ctx context.Context) (driver.Conn, error) {
+	L(log.DebugLevel, "Connect")
+	return connect(h2c.ci)
+}
+
+func (h2c *h2Connector) Driver() driver.Driver {
+	return h2c.driver
+}
+func init() {
+	sql.Register("h2", &h2Driver{})
+}
+
+// Helpers
+
+func parseURL(dsnurl string) (h2connInfo, error) {
 	var ci h2connInfo
 	u, err := url.Parse(dsnurl)
 	if err != nil {
@@ -108,8 +142,4 @@ func (h2d *h2Driver) parseURL(dsnurl string) (h2connInfo, error) {
 
 	}
 	return ci, nil
-}
-
-func init() {
-	sql.Register("h2", &h2Driver{})
 }
