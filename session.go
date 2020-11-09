@@ -44,7 +44,7 @@ func newSession() session {
 	return session{}
 }
 
-func (s *session) prepare(t *transfer, sql string, args []driver.Value) (driver.Stmt, error) {
+func (s *session) prepare(t *transfer, sql string, args []driver.NamedValue) (driver.Stmt, error) {
 	var err error
 	stmt := h2stmt{}
 	// 0. Write SESSION_PREPARE

@@ -23,7 +23,7 @@ type h2Conn struct {
 	driver.Pinger
 	driver.Validator
 	// TODO: replace with QueryerContext instead of Queryer
-	driver.Queryer
+	driver.QueryerContext
 	driver.ExecerContext
 }
 
@@ -31,7 +31,7 @@ type h2Conn struct {
 func (h2c h2Conn) Ping(ctx context.Context) error {
 	L(log.DebugLevel, "Ping")
 	var err error
-	stmt, err := h2c.client.sess.prepare(&h2c.client.trans, "SELECT 1", []driver.Value{})
+	stmt, err := h2c.client.sess.prepare(&h2c.client.trans, "SELECT 1", []driver.NamedValue{})
 	if err != nil {
 		return driver.ErrBadConn
 	}
@@ -65,9 +65,9 @@ func (h2c *h2Conn) Prepare(query string) (driver.Stmt, error) {
 	return nil, nil
 }
 
-// Querier interface
-func (h2c *h2Conn) Query(query string, args []driver.Value) (driver.Rows, error) {
-	L(log.DebugLevel, "Query: %s", query)
+// QuerierContext interface
+func (h2c *h2Conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+	L(log.DebugLevel, "QueryContext: %s", query)
 	var err error
 	stmt, err := h2c.client.sess.prepare(&h2c.client.trans, query, args)
 	if err != nil {
