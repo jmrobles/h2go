@@ -31,7 +31,7 @@ type h2Conn struct {
 func (h2c h2Conn) Ping(ctx context.Context) error {
 	L(log.DebugLevel, "Ping")
 	var err error
-	stmt, err := h2c.client.sess.prepare(&h2c.client.trans, "SELECT 1", []driver.NamedValue{})
+	stmt, err := h2c.client.sess.prepare(&h2c.client.trans, "SELECT 1")
 	if err != nil {
 		return driver.ErrBadConn
 	}
@@ -61,15 +61,23 @@ func (h2c *h2Conn) Close() error {
 }
 
 func (h2c *h2Conn) Prepare(query string) (driver.Stmt, error) {
-	// TODO
-	return nil, nil
+	L(log.DebugLevel, "Prepare: %s", query)
+	var err error
+	stmt, err := h2c.client.sess.prepare2(&h2c.client.trans, query)
+	if err != nil {
+		return nil, err
+	}
+	h2stmtIns := stmt.(h2stmt)
+	h2stmtIns.client = h2c.client
+	h2stmtIns.query = query
+	return h2stmtIns, nil
 }
 
 // QuerierContext interface
 func (h2c *h2Conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	L(log.DebugLevel, "QueryContext: %s", query)
 	var err error
-	stmt, err := h2c.client.sess.prepare(&h2c.client.trans, query, args)
+	stmt, err := h2c.client.sess.prepare(&h2c.client.trans, query)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +96,7 @@ func (h2c *h2Conn) ExecContext(ctx context.Context, query string, args []driver.
 	for _, arg := range args {
 		argsValues = append(argsValues, arg.Value)
 	}
-	stmt, err := h2c.client.sess.prepare2(&h2c.client.trans, query, argsValues)
+	stmt, err := h2c.client.sess.prepare2(&h2c.client.trans, query)
 	if err != nil {
 		return nil, err
 	}

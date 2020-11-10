@@ -44,7 +44,7 @@ func newSession() session {
 	return session{}
 }
 
-func (s *session) prepare(t *transfer, sql string, args []driver.NamedValue) (driver.Stmt, error) {
+func (s *session) prepare(t *transfer, sql string) (driver.Stmt, error) {
 	var err error
 	stmt := h2stmt{}
 	// 0. Write SESSION_PREPARE
@@ -348,7 +348,7 @@ func (s *session) executeQueryUpdate(stmt *h2stmt, t *transfer, values []driver.
 	return nUpdated, nil
 }
 
-func (s *session) prepare2(t *transfer, sql string, args []driver.Value) (driver.Stmt, error) {
+func (s *session) prepare2(t *transfer, sql string) (driver.Stmt, error) {
 	var err error
 	stmt := h2stmt{}
 	// 0. Write SESSION_PREPARE
