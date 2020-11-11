@@ -22,9 +22,9 @@ type h2Conn struct {
 	driver.Conn
 	driver.Pinger
 	driver.Validator
-	// TODO: replace with QueryerContext instead of Queryer
 	driver.QueryerContext
 	driver.ExecerContext
+	driver.ConnBeginTx
 }
 
 // Pinger interface
@@ -51,9 +51,19 @@ func (h2c h2Conn) IsValid() bool {
 }
 
 // Conn interface
-func (h2c *h2Conn) Begin() (driver.Tx, error) {
-	// TODO
-	return nil, nil
+func (h2c h2Conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+	L(log.DebugLevel, "BeginTx")
+	// Set autocommit to false
+	stmt, err := h2c.client.sess.prepare2(&h2c.client.trans, "SET AUTOCOMMIT FALSE")
+	if err != nil {
+		return nil, err
+	}
+	st, _ := stmt.(h2stmt)
+	_, err = h2c.client.sess.executeQueryUpdate(&st, &h2c.client.trans, []driver.Value{})
+	if err != nil {
+		return nil, err
+	}
+	return &h2tx{conn: h2c}, nil
 }
 func (h2c *h2Conn) Close() error {
 	L(log.DebugLevel, "Close conn")

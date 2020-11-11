@@ -332,6 +332,10 @@ func (s *session) executeQueryUpdate(stmt *h2stmt, t *transfer, values []driver.
 	if err != nil {
 		return -1, err
 	}
+	err = s.checkSQLError(status, t)
+	if err != nil {
+		return -1, err
+	}
 	// TODO: assert status == 1
 	// Read num rows updated
 	nUpdated, err := t.readInt32()
