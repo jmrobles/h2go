@@ -87,6 +87,7 @@ You can use the following options:
 - mem=(true|false): to use in-memory or in-disk database
 - logging=(none|info|debug|error|warn|panic|trace): the common logging level
 
+
 ## Parameters
 
 For the use of parameters in SQL statement you need to use the `?` placeholder symbol.
