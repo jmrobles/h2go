@@ -95,6 +95,7 @@ For example:
 ```go 
     conn.Exec("INSERT INTO employees VALUES (?,?,?)", name, age, salary)
 ```
+
 ## Data types
 
 The following H2 datatypes are implemented:
