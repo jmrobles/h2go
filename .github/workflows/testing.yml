@@ -6,10 +6,15 @@ jobs:
   testing:
     name: Go testing
     runs-on: ubuntu-18.04
+    services:
+      h2server:
+        image: jmrobles/h2:1.4.200
+        ports:
+          - 9092:9092
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Run tests
+      - name: Setup go
         uses: actions/setup-go@v2
         with:
           go-version: '^1.15.4' 
