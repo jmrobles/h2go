@@ -11,6 +11,8 @@ jobs:
         image: jmrobles/h2:1.4.200
         ports:
           - 9092:9092
+        env:
+          H2_OPTIONS: -ifNotExists
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
