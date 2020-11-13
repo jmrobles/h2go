@@ -1,0 +1,11 @@
+name: Testing
+on:
+  - push
+  - pull_request
+jobs:
+  testing:
+    name: Go testing
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
