@@ -15,3 +15,15 @@ limitations under the License.
 */
 
 package h2go
+
+import (
+	"database/sql"
+	"testing"
+)
+
+func TestConnection(t *testing.T) {
+	_, err := sql.Open("h2", "h2://sa@h2server:9092/test?mem=true&logging=debug")
+	if err != nil {
+		t.Errorf("Can't connect to the server: %s", err)
+	}
+}
