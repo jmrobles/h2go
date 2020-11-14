@@ -19,6 +19,7 @@ package h2go
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strconv"
@@ -71,10 +72,13 @@ func init() {
 		dsn = fmt.Sprintf("h2://%s@%s/%s?mem=%t", user, addr, dbname, inMem)
 	}
 	// Check alive
+	log.Printf(">>> addr: %s", addr)
 	c, err := net.Dial("tcp", addr)
 	if err == nil {
 		available = true
 		c.Close()
+	} else {
+		log.Printf("Can't connect: %s", err)
 	}
 }
 func runTests(t *testing.T, tests ...func(dt *dbTest)) {
