@@ -6,7 +6,7 @@ jobs:
   testing:
     name: Go testing
     runs-on: ubuntu-18.04
-    container: golang:1.15.5-alpine3.12
+    # container: golang:1.15.5-alpine3.12
     services:
       h2server:
         image: jmrobles/h2:1.4.200
