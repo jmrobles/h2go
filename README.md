@@ -38,7 +38,7 @@ cd contrib
 First make sure the H2 server is running in TCP server mode. You can launch using the `runStandalone.sh` or with a command similar to the following:
 
 ```bash
-ava -classpath h2.jar org.h2.tools.Server -tcp -tcpAllowOthers -ifNotExists
+java -classpath h2.jar org.h2.tools.Server -tcp -tcpAllowOthers -ifNotExists
 ```
 
 This starts the server at the defaulr port (9092)
