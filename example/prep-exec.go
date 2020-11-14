@@ -26,35 +26,12 @@ import (
 func main() {
 	log.Printf("H2GO Example")
 
-	conn, err := sql.Open("h2", "h2://sa@localhost/jander?mem=true&logging=debug")
+	conn, err := sql.Open("h2", "h2://sa@localhost/test?mem=true&logging=info")
 	if err != nil {
 		log.Fatalf("ERROR: %s", err)
 	}
-	// rows, err := conn.Query("SELECT 1+2 AS ping, 'paco'")
-	// //rows, err := conn.Query("SELECT name FROM TableNotExists")
-	// if err != nil {
-	// 	log.Fatalf("ERROR: %s", err)
-	// }
-	// cols, err := rows.Columns()
-	// if err != nil {
-	// 	log.Printf("Can't get columns: %s", err)
-	// }
-	// log.Printf("Columns: %v", cols)
-	// var value int
-	// var name string
-	// for rows.Next() {
-	// 	err := rows.Scan(&value, &name)
-	// 	if err != nil {
-	// 		log.Printf("Can't get value: %s", err)
-	// 		continue
-	// 	}
-	// 	log.Printf("Value: %d - Name: %s", value, name)
-	// }
-	// rows.Close()
-
 	// Create table
 	log.Printf("CREATE TABLE")
-	//ret, err := conn.Exec("CREATE TABLE paco (id int not null, name varchar(100), height float, isMale boolean, numAtoms double, dob date, ts timestamp, tsz timestamp with time zone, start time, starttz time with time zone, age smallint)")
 	stmt, err := conn.Prepare("SELECT 1+1")
 	if err != nil {
 		log.Fatalf("Can't preparate: %s", err)
@@ -77,22 +54,20 @@ func main() {
 	if err != nil {
 		log.Fatalf("Can't preparate: %s", err)
 	}
-	result, err := stmt.Exec()
+	_, err = stmt.Exec()
 	if err != nil {
 		log.Fatalf("Can't execute exec: %s", err)
 	}
-	log.Printf("Result: %v", result)
 
 	stmt, err = conn.Prepare("INSERT INTO test VALUES (?)")
 	if err != nil {
 		log.Fatalf("Can't preparate: %s", err)
 	}
 	v := 123
-	result, err = stmt.Exec(v)
+	_, err = stmt.Exec(v)
 	if err != nil {
 		log.Fatalf("Can't execute exec: %s", err)
 	}
-	log.Printf("Result: %v", result)
 	// Select
 	stmt, err = conn.Prepare("SELECT * FROM test")
 	if err != nil {

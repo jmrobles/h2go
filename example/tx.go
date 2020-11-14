@@ -27,7 +27,7 @@ import (
 func main() {
 	log.Printf("H2GO Example")
 
-	conn, err := sql.Open("h2", "h2://sa@localhost/jander?mem=true&logging=debug")
+	conn, err := sql.Open("h2", "h2://sa@localhost/test?mem=true&logging=info")
 	if err != nil {
 		log.Fatalf("ERROR: %s", err)
 	}
@@ -36,18 +36,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("Can't preparate: %s", err)
 	}
-	result, err := stmt.Exec()
+	_, err = stmt.Exec()
 	if err != nil {
 		log.Fatalf("Can't execute exec: %s", err)
 	}
-	log.Printf("Result: %v", result)
 	// Begin TX for INSERT
 	ctx := context.Background()
 	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		log.Fatalf("Can't start tx: %s", err)
 	}
-	result, err = tx.ExecContext(ctx, "INSERT INTO test VALUES 10")
+	_, err = tx.ExecContext(ctx, "INSERT INTO test VALUES 10")
 	if err != nil {
 		log.Fatalf("Can't execute insert: %s", err)
 	}
