@@ -101,9 +101,13 @@ func runTests(t *testing.T, tests ...func(dt *dbTest)) {
 
 }
 func TestConnection(t *testing.T) {
-	_, err := sql.Open("h2", "h2://sa@h2server:9092/test?mem=true")
+	conn, err := sql.Open("h2", "h2://sa@h2server:9092/test?mem=true")
 	if err != nil {
 		t.Errorf("Can't connect to the server: %s", err)
+	}
+	err = conn.Ping()
+	if err != nil {
+		t.Errorf("Can't do PING: %s", err)
 	}
 }
 func TestPing(t *testing.T) {
