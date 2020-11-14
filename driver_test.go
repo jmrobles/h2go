@@ -59,7 +59,7 @@ func init() {
 	}
 	user = env("H2_TEST_USER", "sa")
 	pass = env("H2_TEST_PASSWORD", "")
-	addr = env("H2_TEST_ADDR", "h2server:9092")
+	addr = env("H2_TEST_ADDR", "localhost:9092")
 	dbname = env("H2_TEST_DBNAME", "test")
 	inMemS := env("H2_TEST_IN_MEMORY", "true")
 	inMem, err := strconv.ParseBool(inMemS)
@@ -100,6 +100,8 @@ func runTests(t *testing.T, tests ...func(dt *dbTest)) {
 	}
 
 }
+
+/*
 func TestConnection(t *testing.T) {
 	conn, err := sql.Open("h2", "h2://sa@h2server:9092/test?mem=true")
 	if err != nil {
@@ -110,6 +112,8 @@ func TestConnection(t *testing.T) {
 		t.Errorf("Can't do PING: %s", err)
 	}
 }
+*/
+
 func TestPing(t *testing.T) {
 	runTests(t, func(dt *dbTest) {
 		err := dt.conn.Ping()
