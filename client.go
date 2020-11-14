@@ -94,3 +94,12 @@ func (c *h2client) doHandshake(ci h2connInfo) error {
 	L(log.InfoLevel, "H2 server code: %d - client ver: %d", code, clientVer)
 	return nil
 }
+
+func (c *h2client) close() error {
+	err := c.sess.close(&c.trans)
+	if err != nil {
+		return err
+	}
+	// Close client
+	return c.conn.Close()
+}

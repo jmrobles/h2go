@@ -31,28 +31,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("ERROR: %s", err)
 	}
-	// rows, err := conn.Query("SELECT 1+2 AS ping, 'paco'")
-	// //rows, err := conn.Query("SELECT name FROM TableNotExists")
-	// if err != nil {
-	// 	log.Fatalf("ERROR: %s", err)
-	// }
-	// cols, err := rows.Columns()
-	// if err != nil {
-	// 	log.Printf("Can't get columns: %s", err)
-	// }
-	// log.Printf("Columns: %v", cols)
-	// var value int
-	// var name string
-	// for rows.Next() {
-	// 	err := rows.Scan(&value, &name)
-	// 	if err != nil {
-	// 		log.Printf("Can't get value: %s", err)
-	// 		continue
-	// 	}
-	// 	log.Printf("Value: %d - Name: %s", value, name)
-	// }
-	// rows.Close()
-
 	// Create table
 	log.Printf("CREATE TABLE")
 	ret, err := conn.Exec("CREATE TABLE paco (id int not null, name varchar(100), height float, isMale boolean, numAtoms double, dob date, ts timestamp, tsz timestamp with time zone, start time, starttz time with time zone, age smallint)")

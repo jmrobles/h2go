@@ -83,7 +83,8 @@ func (h2c h2Conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx
 }
 func (h2c *h2Conn) Close() error {
 	L(log.DebugLevel, "Close conn")
-	return h2c.client.sess.close(&h2c.client.trans)
+
+	return h2c.client.close()
 }
 
 func (h2c *h2Conn) Prepare(query string) (driver.Stmt, error) {

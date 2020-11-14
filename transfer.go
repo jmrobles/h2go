@@ -20,12 +20,12 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
-	"log"
 	"net"
 	"time"
 	"unsafe"
 
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/text/encoding/unicode"
 )
 
@@ -169,10 +169,8 @@ func (t *transfer) readString() (string, error) {
 }
 
 func (t *transfer) writeString(s string) error {
-	// log.Printf("write: %s", s)
 	var err error
 	data := []byte(s)
-	// var pos int32
 	n := int32(len(data))
 	if n == 0 {
 		n = -1
@@ -328,7 +326,7 @@ func (t *transfer) readValue() (interface{}, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't read type of value")
 	}
-	log.Printf(">>> Value kind: %d", kind)
+	L(log.DebugLevel, "Value type: %d", kind)
 	switch kind {
 	case Null:
 		// TODO: review
@@ -388,7 +386,7 @@ func (t *transfer) readValue() (interface{}, error) {
 	case JSON:
 		return nil, errors.Errorf("JSON not implemented")
 	default:
-		log.Printf("Unknown type: %d", kind)
+		L(log.ErrorLevel, "Unknown type: %d", kind)
 		return nil, errors.Errorf("Unknown type: %d", kind)
 	}
 
@@ -439,7 +437,7 @@ func (t *transfer) writeValue(v interface{}) error {
 	return nil
 }
 func (t *transfer) writeDatetimeValue(dt time.Time, mdp h2parameter) error {
-	log.Printf("DT type: %d", mdp.kind)
+	L(log.DebugLevel, "Date/time type: %d", mdp.kind)
 	var err error
 	switch mdp.kind {
 	case Date:
@@ -485,7 +483,6 @@ func (t *transfer) writeDatetimeValue(dt time.Time, mdp h2parameter) error {
 	case TimeTZ:
 		t.writeInt32(TimeTZQuery)
 		nsecBin, offsetTZBin := timetz2bin(&dt)
-		log.Printf("%d - %d", nsecBin, offsetTZBin)
 		err = t.writeInt64(nsecBin)
 		if err != nil {
 			return err
@@ -511,6 +508,10 @@ func (t *transfer) readBytesDef(n int) ([]byte, error) {
 	}
 	return buf, nil
 
+}
+func (t *transfer) close() error {
+	// TODO: check close
+	return nil
 }
 
 // Helpers

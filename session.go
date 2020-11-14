@@ -105,15 +105,14 @@ func (s *session) prepare(t *transfer, sql string) (driver.Stmt, error) {
 	if err != nil {
 		return stmt, err
 	}
-	log.Printf("STATE: %d, IsQuery: %v, Is Read-Only: %v, Num Params: %d", state, isQuery, isRO, numParams)
-
+	L(log.DebugLevel, "STATUS: %d, IsQuery: %v, Is Read-Only: %v, Num Params: %d", state, isQuery, isRO, numParams)
 	return stmt, nil
 }
 
 func (s *session) executeQuery(stmt *h2stmt, t *transfer) ([]string, int32, error) {
 	var err error
 	// 0. Write COMMAND EXECUTE QUERY
-	log.Printf("Execute query")
+	L(log.DebugLevel, "Execute query")
 	err = t.writeInt32(sessionCommandExecuteQuery)
 	if err != nil {
 		return nil, -1, err
@@ -156,12 +155,10 @@ func (s *session) executeQuery(stmt *h2stmt, t *transfer) ([]string, int32, erro
 	if err != nil {
 		return nil, -1, err
 	}
-	/*
-		err = s.checkSQLError(status, t)
-		if err != nil {
-			return nil, -1, err
-		}
-	*/
+	err = s.checkSQLError(status, t)
+	if err != nil {
+		return nil, -1, err
+	}
 	colCnt, err := t.readInt32()
 	if err != nil {
 		return nil, -1, err
@@ -303,7 +300,7 @@ func (s *session) executeQueryUpdate(stmt *h2stmt, t *transfer, values []driver.
 		return -1, fmt.Errorf("Num expected parameters mismatch: %d != %d", stmt.numParams, len(values))
 	}
 	// 0. Write COMMAND EXECUTE QUERY
-	log.Printf("Execute query update")
+	L(log.DebugLevel, "Execute query update")
 	err = t.writeInt32(sessionCommandExecuteUpdate)
 	if err != nil {
 		return -1, err
@@ -342,7 +339,7 @@ func (s *session) executeQueryUpdate(stmt *h2stmt, t *transfer, values []driver.
 	if err != nil {
 		return -1, err
 	}
-	log.Printf("READ STATUS")
+	L(log.DebugLevel, "Read status")
 	// Read query status
 	status, err := t.readInt32()
 	if err != nil {
@@ -415,13 +412,13 @@ func (s *session) prepare2(t *transfer, sql string) (driver.Stmt, error) {
 	if err != nil {
 		return stmt, err
 	}
-	log.Printf("CMD type: %d", cmdType)
+	L(log.DebugLevel, "CMD type: %d", cmdType)
 	// 8. Read params size
 	numParams, err := t.readInt32()
 	if err != nil {
 		return stmt, err
 	}
-	log.Printf("STATE: %d, IsQuery: %v, Is Read-Only: %v, Num Params: %d", state, isQuery, isRO, numParams)
+	L(log.DebugLevel, "STATUS: %d, IsQuery: %v, Is Read-Only: %v, Num Params: %d", state, isQuery, isRO, numParams)
 	stmt.isQuery = isQuery
 	stmt.isRO = isRO
 	stmt.numParams = numParams
@@ -451,7 +448,7 @@ func (s *session) prepare2(t *transfer, sql string) (driver.Stmt, error) {
 		}
 		// 0 = Not null, 1 == Nullable, 2 == Unknown
 		param.nullable = tmp == 1
-		log.Printf("PARAM: Kind: %d - Precission: %d - Scale: %d - Nullable: %v", param.kind, param.precission, param.scale, param.nullable)
+		L(log.DebugLevel, "PARAM: Kind: %d - Precission: %d - Scale: %d - Nullable: %v", param.kind, param.precission, param.scale, param.nullable)
 		stmt.parameters = append(stmt.parameters, param)
 	}
 	return stmt, nil
@@ -468,11 +465,12 @@ func (s *session) close(t *transfer) error {
 	if err != nil {
 		return err
 	}
-	// 1. Write ID
+	// 1. Read ID
 	status, err := t.readInt32()
 	if err != nil {
 		return err
 	}
-	log.Printf("Status: %d", status)
+	L(log.DebugLevel, "Status: %d", status)
+	t.close()
 	return nil
 }
