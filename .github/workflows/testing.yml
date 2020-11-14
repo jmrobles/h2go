@@ -6,6 +6,7 @@ jobs:
   testing:
     name: Go testing
     runs-on: ubuntu-18.04
+    container: ubuntu:18.04
     services:
       h2server:
         image: jmrobles/h2:1.4.200

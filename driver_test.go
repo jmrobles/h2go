@@ -71,6 +71,7 @@ func init() {
 	} else {
 		dsn = fmt.Sprintf("h2://%s@%s/%s?mem=%t", user, addr, dbname, inMem)
 	}
+	log.Printf("DSN: %s", dsn)
 	// Check alive
 	log.Printf(">>> addr: %s", addr)
 	c, err := net.Dial("tcp", addr)
