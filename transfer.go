@@ -17,6 +17,7 @@ limitations under the License.
 package h2go
 
 import (
+	"io"
 	"bufio"
 	"encoding/binary"
 	"fmt"
@@ -139,20 +140,8 @@ func (t *transfer) readString() (string, error) {
 		return "", nil
 	}
 	buf := make([]byte, n*2)
-	/*
-		var cur int32
-		for {
-			n2, err := t.buff.Read(buf[cur:n])
-			if err != nil {
-				return "", err
-			}
-			cur += int32(n2)
-			if cur == n {
-				break
-			}
-		}
-	*/
-	n2, err := t.buff.Read(buf)
+
+	n2, err := io.ReadFull(t.buff, buf)
 	if err != nil {
 		return "", err
 	}
