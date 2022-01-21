@@ -130,12 +130,12 @@ func (s *session) executeQuery(stmt *h2stmt, t *transfer) ([]string, int32, erro
 		return nil, -1, err
 	}
 	// 3. Write Max rows
-	err = t.writeInt32(200)
+	err = t.writeInt32(0)
 	if err != nil {
 		return nil, -1, err
 	}
 	// 4. Write Fetch max size
-	err = t.writeInt32(64)
+	err = t.writeInt32(2147483647)
 	if err != nil {
 		return nil, -1, err
 	}
